@@ -8,12 +8,16 @@ machines, which can have:
 * history states,
 * and more
 
-StateChart is inspired by {https://xstate.js.org the javascript xstate library},
-which is itself based on
-{http://www.inf.ed.ac.uk/teaching/courses/seoc/2005_2006/resources/statecharts.pdf
-"Statecharts: a Visual Formalism for Complex Systems"}. It aims to eventually be
-fully compatible with {https://www.w3.org/TR/scxml SCXML} and with xchart JSON
-serialization.
+![state chart diagram from "Statecharts: a Visual Formalism for Complex Systems" paper by David Harel](doc/statecharts-visual-formalism-david-harel.png)
+
+StateChart is inspired by ["Statecharts: a Visual Formalism for Complex
+Systems"][statecharts.pdf], [SCXML], and [the javascript xstate
+library][xstate].  In addition to its simple ruby DSL, it aims to (eventually)
+be fully compatible with both SCXML and with xchart JSON serialization.
+
+[xstate]: https://xstate.js.org
+[statecharts.pdf]: http://www.inf.ed.ac.uk/teaching/courses/seoc/2005_2006/resources/statecharts.pdf
+[SCXML]: https://www.w3.org/TR/scxml
 
 ## Installation
 
@@ -57,6 +61,11 @@ https://github.com/nevans/state_chart. This project is intended to be a safe,
 welcoming space for collaboration, and contributors are expected to adhere to
 the [code of
 conduct](https://github.com/nevans/state_chart/blob/master/CODE_OF_CONDUCT.md).
+
+## Alternatives
+
+* [aasm gem][https://github.com/aasm/aasm]
+* [state_machines gem][https://github.com/state-machines/state_machines]
 
 ## License
 
