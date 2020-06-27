@@ -4,6 +4,7 @@ RSpec.describe StateChart do
   end
 
   it "does something useful" do
+    skip "not there yet!"
     expect(false).to eq(true)
   end
 end
