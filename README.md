@@ -1,8 +1,19 @@
 # StateChart
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/state_chart`. To experiment with that code, run `bin/console` for an interactive prompt.
+A state machine is a finite set of states that can transition to each other
+deterministically due to events.  A statechart is an extension of state
+machines, which can have:
+* hierarchical (nested) states,
+* orthogonal (parallel) states
+* history states,
+* and more
 
-TODO: Delete this and the text above, and describe your gem
+StateChart is inspired by {https://xstate.js.org the javascript xstate library},
+which is itself based on
+{http://www.inf.ed.ac.uk/teaching/courses/seoc/2005_2006/resources/statecharts.pdf
+"Statecharts: a Visual Formalism for Complex Systems"}. It aims to eventually be
+fully compatible with {https://www.w3.org/TR/scxml SCXML} and with xchart JSON
+serialization.
 
 ## Installation
 
@@ -22,23 +33,38 @@ Or install it yourself as:
 
 ## Usage
 
-TODO: Write usage instructions here
+_TODO: Write usage instructions here_
+
+_The API is still a little bit in flux before the first release, so... until
+this README has more instructions, this is just a fun thought experiment._
 
 ## Development
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+After checking out the repo, run `bin/setup` to install dependencies. Then, run
+`rake spec` to run the tests. You can also run `bin/console` for an interactive
+prompt that will allow you to experiment.
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+To install this gem onto your local machine, run `bundle exec rake install`. To
+release a new version, update the version number in `version.rb`, and then run
+`bundle exec rake release`, which will create a git tag for the version, push
+git commits and tags, and push the `.gem` file to
+[rubygems.org](https://rubygems.org).
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/nevans/state_chart. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [code of conduct](https://github.com/nevans/state_chart/blob/master/CODE_OF_CONDUCT.md).
-
+Bug reports and pull requests are welcome on GitHub at
+https://github.com/nevans/state_chart. This project is intended to be a safe,
+welcoming space for collaboration, and contributors are expected to adhere to
+the [code of
+conduct](https://github.com/nevans/state_chart/blob/master/CODE_OF_CONDUCT.md).
 
 ## License
 
-The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
+The gem is available as open source under the terms of the [MIT
+License](https://opensource.org/licenses/MIT).
 
 ## Code of Conduct
 
-Everyone interacting in the StateChart project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/nevans/state_chart/blob/master/CODE_OF_CONDUCT.md).
+Everyone interacting in the StateChart project's codebases, issue trackers, chat
+rooms and mailing lists is expected to follow the [code of
+conduct](https://github.com/nevans/state_chart/blob/master/CODE_OF_CONDUCT.md).
