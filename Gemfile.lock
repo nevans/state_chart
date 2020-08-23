@@ -1,0 +1,42 @@
+PATH
+  remote: .
+  specs:
+    state_chart (0.1.0)
+      docile (~> 1.3.2)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    diff-lcs (1.3)
+    docile (1.3.2)
+    github-markup (3.0.4)
+    rake (12.3.3)
+    redcarpet (3.5.0)
+    rspec (3.9.0)
+      rspec-core (~> 3.9.0)
+      rspec-expectations (~> 3.9.0)
+      rspec-mocks (~> 3.9.0)
+    rspec-core (3.9.2)
+      rspec-support (~> 3.9.3)
+    rspec-expectations (3.9.2)
+      diff-lcs (>= 1.2.0, < 2.0)
+      rspec-support (~> 3.9.0)
+    rspec-mocks (3.9.1)
+      diff-lcs (>= 1.2.0, < 2.0)
+      rspec-support (~> 3.9.0)
+    rspec-support (3.9.3)
+    yard (0.9.25)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  github-markup
+  rake (~> 12.0)
+  redcarpet
+  rspec (~> 3.0)
+  state_chart!
+  yard
+
+BUNDLED WITH
+   2.1.4
