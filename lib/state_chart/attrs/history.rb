@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 module StateChart
-  class StateNode
+  module Attrs
 
     # @todo...
-    module HasHistory
+    module History
 
       # @return [:deep, :shallow] deep or shallow history (default: shallow)
       def history_type

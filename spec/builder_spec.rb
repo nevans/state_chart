@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 require "spec_helper"
-require "state_chart/export/xstate"
+require "state_chart/xstate"
+require "state_chart/scxml"
 
 module StateChart
 
@@ -9,19 +10,13 @@ module StateChart
 
     # generics
 
-    subject(:builder) { Builder::States }
-
-    let(:definition_name) { :untitled }
-    let(:definition_opts) { {} }
-    let(:definition) {
-      builder.build!(definition_name, **definition_opts, &definition_proc)
-    }
-    let(:exported_xstate_config) { definition.to_xstate_config }
+    let(:exported_xstate_config) { chart.to_xstate_config }
+    let(:exported_scxml) { chart.to_scxml }
 
     # specific machines...
 
-    let(:toggle_proc) {
-      proc do
+    let(:toggle_chart) {
+      StateChart.chart :toggle do
         initial :inactive
         state :inactive do
           on TOGGLE: :active
@@ -53,13 +48,13 @@ module StateChart
 
     let(:toggle_scxml) do
       <<~XML
-        <?xml version="1.0" encoding="utf-8"?>
-        <scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:xi="http://www.w3.org/2001/XInclude" version="1.0" initial="inactive" datamodel="ruby">
-          <state id="toggle__inactive">
-            <transition event="TOGGLE" target="toggle__active"/>
+        <?xml version="1.0" encoding="UTF-8"?>
+        <scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" datamodel="ruby_state_chart" name="toggle" initial="toggle.inactive">
+          <state id="toggle.inactive">
+            <transition event="TOGGLE" target="toggle.active"/>
           </state>
-          <state id="toggle__active">
-            <transition event="TOGGLE" target="toggle__inactive"/>
+          <state id="toggle.active">
+            <transition event="TOGGLE" target="toggle.inactive"/>
           </state>
         </scxml>
       XML
@@ -67,51 +62,47 @@ module StateChart
 
     describe "building a simple compound state node from basic block syntax" do
 
-      let(:definition_name) { :toggle }
-      let(:definition_proc) { toggle_proc }
+      let(:chart) { toggle_chart }
       let(:xstate_config) { toggle_xstate_config }
+      let(:scxml_document) { toggle_scxml }
 
-      it "generates config hash from builder block" do
+      it "generates xstate config hash from builder block" do
         expect(exported_xstate_config).to eq(xstate_config)
       end
 
-      it "creates a #{StateNode} with an ID" do
-        expect(definition).to be_a_kind_of(StateNode)
-        expect(definition.id).to eq("toggle")
+      it "generates SCXML from builder block" do
+        expect(exported_scxml).to eq(scxml_document)
       end
 
-      it "creates no transitions for the root node" do
-        expect(definition.transitions).to be_empty
+      it "creates a #{Chart} with a name" do
+        expect(chart).to be_a_kind_of(Chart)
+        expect(chart.name).to eq("toggle")
       end
 
-      it "creates two states on a #{StateNode::Compound} root node" do
-        expect(definition).to be_a_kind_of(StateNode::Compound)
-        expect(definition.states.length).to eq(2)
-        inactive = definition.states.fetch(:inactive)
-        active   = definition.states.fetch(:active)
-        expect(inactive).to be_a_kind_of(StateNode::Atomic)
-        expect(active).to be_a_kind_of(StateNode::Atomic)
-        expect(definition.initial_state_node).to equal(inactive)
-        expect(inactive).to be_initial
+      it "creates two child states" do
+        expect(chart.states.length).to eq(2)
+        inactive = chart.states.fetch(:inactive)
+        active   = chart.states.fetch(:active)
+        expect(inactive).to be_a_kind_of(State::Atomic)
+        expect(active).to be_a_kind_of(State::Atomic)
+        expect(chart.initial_state).to equal(inactive)
       end
 
     end
 
-    let(:traffic_light_builder) { Builder::States.new("traffic_light") }
-
-    let(:traffic_light_build_proc) {
-      proc do
+    let(:traffic_light_chart) {
+      StateChart.chart :traffic_light do
         initial "green"
         state :green do
-          after 1000, "yellow"
+          after 30, "yellow"
         end
         state :yellow do
-          after 1000, [{ target: 'red' }]
+          after 5, [{ target: 'red' }]
         end
         state :red do
-          after 1000, [
-            { target: 'yellow', cond: "warning" },
-            { target: 'green',  cond: "crosswalk_ready" },
+          after 25, [
+            { target: 'yellow', if: "warning" },
+            { target: 'green',  if: "crosswalk_ready" },
           ]
         end
       end
@@ -123,14 +114,14 @@ module StateChart
         initial: 'green',
         states: {
           "green" => {
-            after: { 1000 => 'yellow' }
+            after: { 30_000 => 'yellow' }
           },
           "yellow" => {
-            after: { 1000 => 'red' }
+            after: { 5_000 => 'red' }
           },
           "red" => {
             after: {
-              1000 => [
+              25_000 => [
                 { target: 'yellow', cond: 'warning' },
                 { target: 'green',  cond: 'crosswalk_ready' },
               ],
@@ -140,14 +131,54 @@ module StateChart
       }
     }
 
+    let(:traffic_light_scxml) do
+      <<~XML
+        <?xml version="1.0" encoding="UTF-8"?>
+        <scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" datamodel="ruby_state_chart" name="traffic_light" initial="traffic_light.green">
+          <state id="traffic_light.green">
+            <onentry>
+              <send id="__internal__.delay.after_30" event="__internal__.delay.after_30" delay="30s"/>
+            </onentry>
+            <onexit>
+              <cancel sendid="__internal__.delay.after_30"/>
+            </onexit>
+            <transition event="__internal__.delay.after_30" target="traffic_light.yellow"/>
+          </state>
+          <state id="traffic_light.yellow">
+            <onentry>
+              <send id="__internal__.delay.after_5" event="__internal__.delay.after_5" delay="5s"/>
+            </onentry>
+            <onexit>
+              <cancel sendid="__internal__.delay.after_5"/>
+            </onexit>
+            <transition event="__internal__.delay.after_5" target="traffic_light.red"/>
+          </state>
+          <state id="traffic_light.red">
+            <onentry>
+              <send id="__internal__.delay.after_25" event="__internal__.delay.after_25" delay="25s"/>
+            </onentry>
+            <onexit>
+              <cancel sendid="__internal__.delay.after_25"/>
+            </onexit>
+            <transition event="__internal__.delay.after_25" target="traffic_light.yellow" cond="warning"/>
+            <transition event="__internal__.delay.after_25" target="traffic_light.green" cond="crosswalk_ready"/>
+          </state>
+        </scxml>
+      XML
+    end
+
     describe "building with 'after' delays" do
 
-      let(:definition_name) { :traffic_light }
-      let(:definition_proc) { traffic_light_build_proc }
+      let(:chart) { traffic_light_chart }
       let(:xstate_config) { traffic_light_xstate_config }
+      let(:scxml_document) { traffic_light_scxml }
 
       it "generates config hash from builder block" do
         expect(exported_xstate_config).to eq(xstate_config)
+      end
+
+      it "generates SCXML from builder block" do
+        expect(exported_scxml).to eq(scxml_document)
       end
 
     end
@@ -155,7 +186,8 @@ module StateChart
     # adapted from xstate's machine.test.ts
 
     let(:pedestrian_definition) {
-      Builder::States.build!("pedestrian", initial: :walk) do
+      proc do
+        initial :walk
         state :walk do
           on PED_COUNTDOWN: 'wait'
         end
@@ -177,9 +209,9 @@ module StateChart
       };
     }
 
-    let(:nested_light_opts) { { initial: :green } }
-    let(:nested_light_proc) {
-      proc do
+    let(:nested_light_chart) {
+      spec = self # because the block below will be instance_exec'd
+      StateChart.chart :nested_light, initial: :green do
         state :green do
           on(
             TIMER: 'yellow',
@@ -191,37 +223,38 @@ module StateChart
           on TIMER: 'red'
           on POWER_OUTAGE: 'red'
         end
-        states :red do
-          include_definition pedestrian_definition
+        state :red do
+          instance_exec(&spec.pedestrian_definition)
           on TIMER: 'green'
           on POWER_OUTAGE: 'red'
         end
       end
     }
 
+    # n.b. see the note on Export::XState#visit_transitions
     let(:nested_light_xstate_config) {
       {
         id: 'nested_light',
         initial: 'green',
         states: {
           "green" => {
-            on: {
-              "TIMER" => 'yellow',
-              "POWER_OUTAGE" => 'red',
-              "FORBIDDEN_EVENT" => { actions: [] },
-            }
+            on: [
+              { "TIMER" => 'yellow' },
+              { "POWER_OUTAGE" => 'red' },
+              { "FORBIDDEN_EVENT" => { actions: [] } },
+            ],
           },
           "yellow" => {
-            on: {
-              "TIMER" => 'red',
-              "POWER_OUTAGE" => 'red'
-            }
+            on: [
+              { "TIMER" => 'red' },
+              { "POWER_OUTAGE" => 'red' },
+            ],
           },
           "red" => pedestrian_xstate_config.merge({
-            on: {
-              "TIMER" => 'green',
-              "POWER_OUTAGE" => 'red'
-            },
+            on: [
+              { "TIMER" => 'green' },
+              { "POWER_OUTAGE" => 'red' },
+            ],
           })
         }
       }
@@ -229,13 +262,153 @@ module StateChart
 
     describe "building with nested and merged/included states" do
 
-      let(:definition_name) { :nested_light }
-      let(:definition_opts) { nested_light_opts }
-      let(:definition_proc) { nested_light_proc }
-      let(:xstate_config)   { nested_light_xstate_config }
+      let(:chart) { nested_light_chart }
+      let(:xstate_config) { nested_light_xstate_config }
 
       it "generates config hash from builder block" do
         expect(exported_xstate_config).to eq(xstate_config)
+      end
+
+    end
+
+    # adapted from xstate's machine.test.ts
+
+    let(:config_chart) {
+      StateChart.chart :config do
+        initial :alpha
+
+        # Having an identical attribute name and state name can cause issues
+        # with SCXML export.  However, the state ID isn't explicit, so we are
+        # free to generate a different one. e.g. namespaced like +"S:#{path}"+.
+        attribute :foo, default: "bar"
+
+        state :alpha do
+          attribute :baz, default: "quux"
+          on_entry "entryAction"
+          on EVENT: "omega", if: "someCondition"
+        end
+
+        final :omega
+
+      end
+    }
+
+    let(:config_xstate_schema) {
+      {
+        id: "config",
+        initial: "alpha",
+        context: {
+          foo: "bar",
+          baz: "quux", # xstate export hoists all attributes to the top
+        },
+        states: {
+          "alpha" => {
+            onEntry: "entryAction",
+            on: {
+              "EVENT" => {
+                target: "omega",
+                cond: "someCondition"
+              }
+            }
+          },
+          "omega" => {type: :final}
+        }
+      }
+    }
+
+    describe "building with data_model" do
+
+      let(:chart) { config_chart }
+      let(:xstate_config) { config_xstate_schema }
+
+      it "generates config hash from builder block" do
+        expect(exported_xstate_config).to eq(xstate_config)
+      end
+
+      it "lists all attributes on the chart" do
+
+      end
+
+    end
+
+    describe "building with deeply nested and parallel nodes" do
+
+      let(:parallel_traffic_lights_proc) do
+        proc do
+          initial :green
+          state :green do
+            on TIMER: "yellow"
+          end
+          state :yellow do
+            on TIMER: 'red'
+          end
+          parallel :red do
+            state :walkSign do
+              initial :solid
+              state :solid do
+                on COUNTDOWN: 'flashing'
+              end
+              state :flashing do
+                on STOP_COUNTDOWN: 'solid'
+              end
+            end
+            state :pedestrian do
+              initial :walk
+              state :walk do
+                on COUNTDOWN: 'wait'
+              end
+              wait do
+                on STOP_COUNTDOWN: 'stop'
+              end
+              final :stop
+            end
+          end
+        end
+      end
+
+      let(:parallel_traffic_lights_xstate_schema) do
+        {
+          id: 'light',
+          initial: 'green',
+          states: {
+            green: {
+              on: { TIMER: 'yellow' }
+            },
+            yellow: {
+              on: { TIMER: 'red' }
+            },
+            red: {
+              type: 'parallel',
+              states: {
+                walkSign: {
+                  initial: 'solid',
+                  states: {
+                    solid: {
+                      on: { COUNTDOWN: 'flashing' }
+                    },
+                    flashing: {
+                      on: { STOP_COUNTDOWN: 'solid' }
+                    }
+                  }
+                },
+                pedestrian: {
+                  initial: 'walk',
+                  states: {
+                    walk: {
+                      on: { COUNTDOWN: 'wait' }
+                    },
+                    wait: {
+                      on: { STOP_COUNTDOWN: 'stop' }
+                    },
+                    stop: {
+                      type: 'final'
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       end
 
     end

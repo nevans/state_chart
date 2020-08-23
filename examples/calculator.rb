@@ -15,7 +15,7 @@ StateChart.chart "calcMachine" do
   initial :start
 
   state :start do
-    on NUMBER: "operand1.zero", if: :zero? do,
+    on NUMBER: "operand1.zero", if: :zero? do
       action :defaultReadout
     end
     on NUMBER: "operand1.before_decimal_point", unless: :zero? do

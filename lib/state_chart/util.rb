@@ -1,77 +1,76 @@
 # frozen_string_literal: true
 
 require_relative "errors"
+require_relative "util/regex"
 
 module StateChart
 
   module Util
 
-    VALID_NAME = /[A-Za-z][A-Za-z0-9_:.-]*/
+    # !@visibility private
+    #
+    # a special null object used to distinguish between args/kwargs that are
+    # default vs user-specified nil. It should only be used internally, and
+    # should probably only be used as an argument default and shouldn't be
+    # allowed to escape the method it's declared in.
+    UNDEFINED = Object.new.tap do |undefined|
+      class << undefined
+        def nil?;  true end
 
-    UNDEFINED = Object.new
-    private_constant :UNDEFINED
+        def !; true end
+        def &(obj) false end
+        def ^(obj) obj ? true : false end
+        def |(obj) obj ? true : false end
 
-    class << UNDEFINED
-      def to_s; "#{Util}::UNDEFINED" end
-      alias inspect to_s
-    end
-    UNDEFINED.freeze
+        def to_a; nil.to_a end
+        def to_c; nil.to_c end
+        def to_f; nil.to_f end
+        def to_h; nil.to_h end
+        def to_i; nil.to_i end
+        def to_r; nil.to_r end
+        def to_s; nil.to_s end
+
+        def empty?;   true end
+        def blank?;   true end
+        def present?; false end
+
+        def inspect; "#{Util}::UNDEFINED" end
+      end
+    end.freeze
+
+    # !@visibility private
+    # these could be very common, so avoid reallocating every time
+    EMPTY = [].freeze
+
+    # !@visibility private
+    # these could be very common, so avoid reallocating every time
+    EMPTY_HASH = {}.freeze
 
     module_function
 
-    def validate_initial_transition!(transition, name: "initial")
-      # valid local target is verified during finalize
-      raise "must set target on #{name} transition" unless transition.target
-      raise "must not set cond on #{name} transition"  if transition.cond?
-      raise "must not set event on #{name} transition" if transition.event?
-    end
-
-    def validate_transition_event(event)
-      return Transition::IMMEDIATE if event.nil?
-      if event == Transition::IMMEDIATE || event == Transition::WILDCARD
-        event
+    def validate_name_format(val, nullable: false)
+      case val
+      when Regex::VALID_NAME
+        -val.to_s
+      when nil
+        raise InvalidName, "nil is not allowed" unless nullable
+        nil
       else
-        validate_name_format!("transition event", event)
+        raise InvalidName, "invalid name: %p" % [val]
       end
     end
 
-    def validate_cond_format(cond)
-      return true if cond.nil? || cond == true
-      validate_name_format!("cond", cond)
-    end
-
-    def validate_name_format!(attr, val, nullable: false)
-      if val.nil? && nullable
-        return
-      elsif Symbol === val
-        val = val.to_s
-      elsif val.respond_to?(:to_str)
-        val = val.to_str
+    def validate_event_name(event)
+      case event
+      when Util::Regex::SCXML::WILDCARD
+        WILDCARD
+      when Util::Regex::SCXML::EVENT_NAME
+        -event.to_s
+      when Util::Regex::SCXML::EVENT_NAME_WITH_WILD_SUFFIX
+        -Regexp.last_match[:base]
       else
-        raise InvalidName, "invalid %s, no conversion to string: %p" % [attr, val]
+        raise InvalidName, "Invalid event name: %p" % event
       end
-      if VALID_NAME.match?(val)
-        val
-      else
-        raise InvalidName, "invalid %s: %p" % [attr, val]
-      end
-    end
-
-    TRANSITION_TYPES = %i[internal external].freeze
-
-    def validate_transition_type(type)
-      return nil if type.nil?
-      validate_transition_type!(type)
-    end
-
-    def validate_transition_type!(type)
-      if String === type
-        type = type.to_sym
-      end
-      unless type && TYPES.include?(type)
-        raise ArgumentError, "invalid type %p" % [type]
-      end
-      type
     end
 
   end

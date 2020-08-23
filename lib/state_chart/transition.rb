@@ -1,94 +1,142 @@
 # frozen_string_literal: true
 
+require "forwardable"
+
 require_relative "util"
+require_relative "event"
+require_relative "expressions"
+require_relative "actions"
 
 module StateChart
 
   class Transition
-    IMMEDIATE = ""
-    WILDCARD = "*"
-
     include Util
 
-    def initialize(event, cond: true, target: nil, type: nil, actions: nil)
-      @event  = validate_transition_event(event)
-      @cond   = validate_cond_format(cond)
-      @target = validate_name_format!("target", target, nullable: true)
-      @type   = validate_transition_type(type)
-      actions&.each do |a|
-        action a
+    # @todo SCXML MUST specify at least one of 'event', 'cond' or 'target'.
+    #       (immediate events must supply at least 'cond' or 'target')
+    # @todo collapse redundant events, e.g. "foo foo.bar baz" into "foo baz"
+    # @todo issue a warning for redundant events (e.g. "foo foo.bar")
+    # @todo add mandatory @param source [state]
+    def initialize(
+      event_descriptor,
+      target: nil,
+      type: nil,
+      actions: nil,
+      **opts, # because :if and :unless are ruby keywords!
+      &block
+    )
+      @event   = Events::Descriptors.new event_descriptor
+      @target  = Target.new(target, type: type)
+      @cond    = Expressions::Condition.new(**opts)
+      @actions = Actions::Block.new(*actions)
+      if block_given?
+        Builder[self].build!(self, &block)
       end
+      freeze # not deep frozen until target refs are resolved
     end
 
-    # From https://www.w3.org/TR/scxml/#EventDescriptors
-    #
-    # Like an event name, an event descriptor is a series of alphanumeric
-    # characters segmented into tokens by the "." character. The 'event'
-    # attribute of a transition consists of one or more such event descriptors
-    # separated by spaces.
-    #
-    # A transition _matches_ an event if at least one of its event descriptors
-    # matches the event's name.
-    #
-    # An event descriptor matches an event name if its string of tokens is an
-    # exact match or a prefix of the set of tokens in the event's name. In all
-    # cases, the token matching is case sensitive.
-    #
-    # For example, a transition with an 'event' attribute of "error foo" will
-    # match event names "error", "error.send", "error.send.failed", etc. (or
-    # "foo", "foo.bar" etc.) but would not match events named
-    # "errors.my.custom", "errorhandler.mistake", "error.send" or "foobar".
-    #
-    # To make the prefix matching possibly more clear to a reader of the machine
-    # definition, an event descriptor MAY also end with the wildcard '.*', which
-    # matches zero or more tokens at the end of the processed event's name. Note
-    # that a transition with 'event' of "error", one with "error.", and one with
-    # "error.*" are functionally equivalent since they are token prefixes of
-    # exactly the same set of event names.
-    #
-    # An event designator consisting solely of "*" can be used as a wildcard
-    # matching any sequence of tokens, and thus any event. Note that this is
-    # different from a transition lacking the 'event' attribute altogether. Such
-    # an eventless transition does not match any event, but will be taken
-    # whenever its 'cond' attribute evaluates to 'true'. The {Interpreter}
-    # will check for such eventless transitions when it first enters a state,
-    # before it looks for transitions driven by internal or external events.
-    #
-    # @return [String,Symbol,nil]
-    attr_reader :event
+    extend Forwardable
 
-    # An array of targets is only allowed with {StateNode::Parallel}.
-    #
-    # @return [String,Symbol,StateNode,Array<String,Symbol,StateNode>]
-    attr_reader :target
+    def_delegators :@event, :event, :events, :delay
+    def_delegators :@event, :delay?, :event?, :wildcard?, :immediate?
+    def_delegator :@event, :matches_name?, :matches_event_name?
 
-    # @return [Array<Action>]
-    def actions
-      defined?(@actions) ? @actions : (frozen? ? [] : @actions = [])
-    end
+    def_delegators :@target, :target, :target?
+    def_delegators :@target, :type, :type?, :external?, :internal?
+    def_delegator :@target, :resolve_references!
+    def_delegator :@target, :states, :target_states
+    def_delegator :@target, :ids, :target_ids
 
-    # @return [Boolean] if transition into self triggers actions
-    attr_reader :external
+    def_delegators :@cond, :cond, :cond?, :unconditional?, :conditional?
 
-    # @return [true,String] guard condition for this transition
-    attr_reader :cond
+    def_delegators :@actions, :actions, :actions?
 
-    def external?; !@type || @type == :external end
-    def internal?;  @type && @type == :internal end
-
-    def type; external? ? :external : :internal end
-
-    def immediate?; event == IMMEDIATE || event.nil?  end
-    def transient?; immediate? && !cond? end
-
-    def event?; !immediate? end
-    def actions?; !(@actions.nil? || @actions.empty?) end
-    def target?; !@target.nil? end
-    def type?; !@type.nil? end
-    def cond?; !(@cond.nil? || @cond == true) end
+    def transient?; immediate? && unconditional? end
 
     def only_target?
       target? && !(actions? || type? || cond?)
+    end
+
+    class Target
+
+      TYPES = %i[internal external].freeze
+
+      def initialize(target, type:)
+        @to_s = validate_transition_target target
+        @type = validate_transition_type   type
+      end
+
+      # Usually a single target state, but an array of targets is allowed if a
+      # parallel state allows that to be a legal state configuration.
+      #
+      # @return [String] the string serialization for the target states
+      attr_reader :to_s
+
+      def to_a
+        @to_s ? @to_s.split(/\s+/) : Util::EMPTY
+      end
+
+      alias target  to_s
+      alias targets to_a
+
+      # @return [:external,:interna;] the type of transition
+      def type; external? ? :external : :internal end
+
+      # @return [Boolean] was a target specified?
+      def target?; !@to_s.nil? end
+
+      # @return [Boolean] was a type explicitly specified?
+      def type?; !@type.nil? end
+
+      # @return [Boolean] is this an external transition?
+      def external?; !@type || @type == :external end
+
+      # @return [Boolean] is this an internal transition?
+      def internal?;  @type && @type == :internal end
+
+      def resolve_references!(source_state)
+        @states = to_a.map {|ref| source_state.resolve_state(ref) }
+      end
+
+      def resolved?
+        !!@states
+      end
+
+      def states
+        raise Error, "need to resolve_references" unless resolved?
+        @states
+        # TODO: order by document order
+      end
+
+      def ids
+        states.map {|s| s.id }
+      end
+
+      private
+
+      # TODO: use {StateSet} for transition target
+      def validate_transition_target(target)
+        case target
+        when nil
+          nil
+        when Util::Regex::VALID_REFS
+          -target.to_s
+        when Array
+          -target.flat_map {|t| validate_transition_target(t) }.join(" ")
+        else
+          raise InvalidName, "invalid transition target: %p" % [target]
+        end
+      end
+
+      def validate_transition_type(type)
+        return nil if type.nil?
+        type = type.to_sym
+        unless TYPES.include?(type)
+          raise ArgumentError, "invalid type %p" % [type]
+        end
+        type
+      end
+
     end
 
   end

@@ -1,30 +1,29 @@
 # frozen_string_literal: true
 
 require_relative "../util"
-require_relative "states_collection"
 
 module StateChart
 
-  class StateNode
+  module Attrs
 
     # manages done_data for {Final}
-    module HasDoneData
+    module DoneData
 
       # @todo implement ...
       # @see https://www.w3.org/TR/scxml/#donedata
       # @see https://xstate.js.org/docs/guides/communication.html#done-data
       def done_data
-      end
-
-      def include_definition(other)
-        super
-        __copying_ivar__(other, :done_data) do |other_done_data|
-          @done_data = other_done_data
+        if defined?(@done_data)
+          @done_data
+        elsif frozen?
+          Util::EMPTY_HASH
+        else
+          @done_data = {}
         end
       end
 
-      def finalize!
-        done_data # trigger memoization before freeze
+      def freeze
+        @done_data&.freeze
         super
       end
 

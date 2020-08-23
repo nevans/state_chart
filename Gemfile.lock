@@ -13,6 +13,7 @@ GEM
       ruby-progressbar (~> 1.4)
     github-markup (3.0.4)
     method_source (1.0.0)
+    ox (2.13.2)
     pry (0.13.1)
       coderay (~> 1.1)
       method_source (~> 1.0)
@@ -40,6 +41,7 @@ PLATFORMS
 DEPENDENCIES
   fuubar
   github-markup
+  ox
   pry
   rake (~> 12.0)
   redcarpet

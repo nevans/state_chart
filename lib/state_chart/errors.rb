@@ -8,4 +8,6 @@ module StateChart
 
   class InvalidName < Error; end
 
+  class InvalidReference < Error; end
+
 end
