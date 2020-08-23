@@ -3,9 +3,6 @@
 require_relative "state_node"
 require_relative "transition"
 
-# TODO: do we want this dependency? maybe just use BasicObject and simplify?
-require "docile"
-
 module StateChart
 
   module Builder
