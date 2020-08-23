@@ -9,6 +9,8 @@ module StateChart
     VALID_NAME = /[A-Za-z][A-Za-z0-9_:.-]*/
 
     UNDEFINED = Object.new
+    private_constant :UNDEFINED
+
     class << UNDEFINED
       def to_s; "#{Util}::UNDEFINED" end
       alias inspect to_s

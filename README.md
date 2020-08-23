@@ -1,19 +1,23 @@
+<!--
+# @markup markdown
+-->
 # StateChart
 
 A state machine is a finite set of states that can transition to each other
 deterministically due to events.  A statechart is an extension of state
 machines, which can have:
+
 * hierarchical (nested) states,
 * orthogonal (parallel) states
 * history states,
 * and more
 
-![state chart diagram from "Statecharts: a Visual Formalism for Complex Systems" paper by David Harel](doc/statecharts-visual-formalism-david-harel.png)
-
 StateChart is inspired by ["Statecharts: a Visual Formalism for Complex
 Systems"][statecharts.pdf], [SCXML], and [the javascript xstate
 library][xstate].  In addition to its simple ruby DSL, it aims to (eventually)
-be fully compatible with both SCXML and with xchart JSON serialization.
+be compatible with both SCXML and with xchart's JSON serialization.
+
+![state chart diagram from "Statecharts: a Visual Formalism for Complex Systems" paper by David Harel](docs/images/statecharts-visual-formalism-david-harel.png)
 
 [xstate]: https://xstate.js.org
 [statecharts.pdf]: http://www.inf.ed.ac.uk/teaching/courses/seoc/2005_2006/resources/statecharts.pdf
@@ -38,6 +42,9 @@ Or install it yourself as:
 ## Usage
 
 _TODO: Write usage instructions here_
+
+*This gem is not really usable or useful yet!* _...which is why it hasn't been
+pushed to rubygems yet._
 
 _The API is still a little bit in flux before the first release, so... until
 this README has more instructions, this is just a fun thought experiment._
@@ -64,8 +71,11 @@ conduct](https://github.com/nevans/state_chart/blob/master/CODE_OF_CONDUCT.md).
 
 ## Alternatives
 
-* [aasm gem][https://github.com/aasm/aasm]
-* [state_machines gem][https://github.com/state-machines/state_machines]
+These ruby state machine gems have been well-loved and used in many production
+environments for many years:
+
+* [aasm gem](https://github.com/aasm/aasm)
+* [state_machines gem](https://github.com/state-machines/state_machines)
 
 ## License
 
